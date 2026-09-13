@@ -1,0 +1,2 @@
+.toggle { width: 44px; height: 44px; display: grid; place-items: center; background: transparent; border: 1px solid var(--color-border); border-radius: 50%; color: var(--color-text); transition: background .2s; }
+.toggle:hover { background: var(--color-soft); }

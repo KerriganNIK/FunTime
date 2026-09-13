@@ -1,0 +1,11 @@
+services:
+  edge:
+    ports: ['80:80', '443:443']
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:?Set the production domain}
+  frontend:
+    image: ${FRONTEND_IMAGE:?Set the frontend image digest}
+  gateway:
+    image: ${GATEWAY_IMAGE:?Set the gateway image digest}
+  catalog:
+    image: ${CATALOG_IMAGE:?Set the catalog image digest}

@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package funtime.catalog.v1;
+option go_package = "funtime.local/contracts/catalog/v1;catalogv1";
+
+service CatalogService {
+  rpc ListGames(ListGamesRequest) returns (ListGamesResponse);
+}
+
+message ListGamesRequest {}
+
+message Game {
+  string id = 1;
+  string title = 2;
+  string description = 3;
+  string category = 4;
+  string status = 5;
+  string accent = 6;
+}
+
+message ListGamesResponse {
+  repeated Game games = 1;
+}

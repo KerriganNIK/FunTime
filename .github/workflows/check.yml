@@ -1,0 +1,31 @@
+name: Check
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.x'
+          cache: false
+      - run: npm ci
+      - run: npm run generate
+      - name: Check generated contracts
+        run: git diff --exit-code -- contracts/gen/go frontend/src/shared/api/generated
+      - run: npm run check
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - name: Validate Compose and build containers
+        run: docker compose -f deploy/compose.yaml -f deploy/compose.dev.yaml config --quiet && docker compose -f deploy/compose.yaml -f deploy/compose.dev.yaml build

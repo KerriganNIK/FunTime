@@ -1,0 +1,6 @@
+.dialog { padding: 0; border: 1px solid var(--color-border); border-radius: var(--radius-lg); color: var(--color-text); background: var(--color-surface); box-shadow: var(--shadow-dialog); width: min(560px, calc(100% - 32px)); max-height: calc(100dvh - 48px); }
+.dialog::backdrop { background: #14201580; backdrop-filter: blur(5px); }
+.content { padding: 44px 36px 32px; }
+.content h2 { padding-right: 30px; font: 600 23px/1.4 var(--font-display); margin-bottom: 20px; }
+.close { position: absolute; top: 15px; right: 15px; display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 50%; background: var(--color-soft); color: var(--color-text); }
+@media (max-width: 480px) { .content { padding: 44px 24px 24px; } .content h2 { font-size: 19px; } }

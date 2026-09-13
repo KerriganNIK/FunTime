@@ -1,0 +1,60 @@
+openapi: 3.0.3
+info:
+  title: FunTime API
+  version: 0.1.0
+paths:
+  /api/v1/games:
+    get:
+      operationId: listGames
+      summary: List games, including games in development
+      responses:
+        '200':
+          description: Catalog
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [games]
+                properties:
+                  games:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Game'
+        '503':
+          description: Catalog unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+components:
+  schemas:
+    Game:
+      type: object
+      required: [id, title, description, category, status, accent]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+        status:
+          type: string
+          enum: [coming_soon, available, maintenance]
+        accent:
+          type: string
+          enum: [lime, lavender, peach]
+    ApiError:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+            message:
+              type: string

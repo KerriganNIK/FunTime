@@ -1,0 +1,26 @@
+{
+  "name": "funtime",
+  "private": true,
+  "workspaces": [
+    "frontend"
+  ],
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "dev:web": "npm run dev --workspace frontend",
+    "build": "npm run build --workspace frontend && node scripts/go.mjs build",
+    "check": "npm run check --workspace frontend && node scripts/check-fsd.mjs && node scripts/go.mjs test",
+    "test:e2e": "node scripts/test-e2e.mjs",
+    "generate": "node scripts/generate.mjs"
+  },
+  "devDependencies": {
+    "@bufbuild/buf": "1.50.0",
+    "@playwright/test": "^1.58.0",
+    "openapi-typescript": "^7.6.1"
+  },
+  "allowScripts": {
+    "@bufbuild/buf@1.50.0": true
+  }
+}

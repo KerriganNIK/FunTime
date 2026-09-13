@@ -1,0 +1,15 @@
+services:
+  edge:
+    ports: [127.0.0.1:8088:80]
+  frontend:
+    build:
+      context: ..
+      dockerfile: frontend/Dockerfile
+  gateway:
+    build:
+      context: ..
+      dockerfile: services/gateway/Dockerfile
+  catalog:
+    build:
+      context: ..
+      dockerfile: services/catalog/Dockerfile

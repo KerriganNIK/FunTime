@@ -1,0 +1,82 @@
+name: funtime
+
+services:
+  edge:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [edge, app]
+    depends_on:
+      frontend:
+        condition: service_healthy
+      gateway:
+        condition: service_healthy
+    logging: &logging
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
+
+  frontend:
+    image: ${FRONTEND_IMAGE:-funtime/frontend:dev}
+    restart: unless-stopped
+    networks: [app]
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, http://127.0.0.1/healthz]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+    logging: *logging
+
+  gateway:
+    image: ${GATEWAY_IMAGE:-funtime/gateway:dev}
+    restart: unless-stopped
+    environment:
+      HTTP_ADDR: :8080
+      CATALOG_ADDR: catalog:9001
+    networks: [app]
+    read_only: true
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    stop_grace_period: 10s
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, http://127.0.0.1:8080/readyz]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+    depends_on:
+      catalog:
+        condition: service_healthy
+    logging: *logging
+
+  catalog:
+    image: ${CATALOG_IMAGE:-funtime/catalog:dev}
+    restart: unless-stopped
+    environment:
+      GRPC_ADDR: :9001
+      HEALTH_ADDR: :9002
+    networks: [app]
+    read_only: true
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    stop_grace_period: 10s
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, http://127.0.0.1:9002/healthz]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+    logging: *logging
+
+networks:
+  edge:
+  app:
+    internal: true
+
+volumes:
+  caddy_data:
+  caddy_config:

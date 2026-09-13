@@ -1,0 +1,5 @@
+.button { display: inline-flex; align-items: center; justify-content: center; gap: 12px; min-height: 48px; padding: 12px 22px; border: 1px solid transparent; border-radius: var(--radius-sm); font-weight: 750; line-height: 1.4; transition: transform .18s, background .18s; }
+.button:not(:disabled):hover { transform: translateY(-2px); }
+.primary { color: var(--color-on-button); background: var(--color-button); }
+.secondary { color: var(--color-text); border-color: var(--color-border); background: var(--color-surface); }
+.accent { color: var(--color-on-accent); background: var(--color-accent); }
