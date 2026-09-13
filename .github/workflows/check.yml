@@ -9,6 +9,19 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: funtime
+          POSTGRES_PASSWORD: ci-only-password
+          POSTGRES_DB: funtime_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U funtime -d funtime_test"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      FUNTIME_TEST_DATABASE_URL: postgres://funtime:ci-only-password@127.0.0.1:5432/funtime_test?sslmode=disable
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

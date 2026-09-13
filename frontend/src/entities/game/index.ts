@@ -1,3 +1,3 @@
 export type { Game } from './model/game';
-export { getGames } from './api/get-games';
+export { useGetGamesQuery } from './api/game-api';
 export { GameCard } from './ui/GameCard';

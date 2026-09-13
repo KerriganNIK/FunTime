@@ -6,7 +6,7 @@ import { root, cache, goEnv } from './env.mjs';
 const mode = process.argv[2];
 if (!['build', 'test', 'tidy'].includes(mode)) throw new Error('Expected build, test, or tidy');
 mkdirSync(join(cache, 'bin'), { recursive: true });
-for (const name of ['contracts/gen/go', 'services/catalog', 'services/gateway']) {
+for (const name of ['contracts/gen/go', 'packages/go', 'services/catalog', 'services/world-domination', 'services/room', 'services/gateway']) {
   const service = name.split('/').at(-1);
   const args = mode === 'build' && name.startsWith('services')
     ? ['build', '-o', join(cache, 'bin', `${service}${process.platform === 'win32' ? '.exe' : ''}`), './cmd/server']

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	catalogv1 "funtime.local/contracts/catalog/v1"
+	roomv1 "funtime.local/contracts/room/v1"
 	"funtime.local/gateway/internal/httpapi"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -40,9 +41,14 @@ func run() error {
 		return err
 	}
 	defer connection.Close()
+	roomConnection, err := grpc.NewClient(env("ROOM_ADDR", "127.0.0.1:9003"), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return err
+	}
+	defer roomConnection.Close()
 	server := &http.Server{
 		Addr:              env("HTTP_ADDR", ":8080"),
-		Handler:           httpapi.New(catalogv1.NewCatalogServiceClient(connection)),
+		Handler:           httpapi.New(catalogv1.NewCatalogServiceClient(connection), roomv1.NewRoomServiceClient(roomConnection)),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      10 * time.Second,

@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { ArrowDown, ArrowRight, ArrowUpRight, Asterisk, Check, CircleHelp, Gamepad2, Globe2, Monitor, Plus, Search, Smartphone, Sparkles, Users, X } from 'lucide-react';
+import { ArrowDown, ArrowRight, ArrowUpRight, Asterisk, CircleHelp, Gamepad2, Globe2, Monitor, Plus, Search, Smartphone, Sparkles, Users, X } from 'lucide-react';
 import { AppHeader } from '@/widgets/app-header';
 import { GameCard, type Game } from '@/entities/game';
 import { Button } from '@/shared/ui/button';
 import { Dialog } from '@/shared/ui/dialog';
+import { EnterRoom } from '@/features/enter-room';
 import { useCatalog } from '../model/use-catalog';
 import { PlanetArtwork } from './PlanetArtwork';
 import { HeroArtwork } from './HeroArtwork';
@@ -53,7 +54,7 @@ export function HomePage() {
       </section>
 
       <section id="how-it-works" className={styles.how} aria-labelledby="how-title">
-        <div className={styles.howIntro}><div className={styles.overline}>ВСЁ ПРОСТО</div><h2 id="how-title">Один вечер.<br/>Три простых шага.</h2><p>Вот как будут проходить игры<br/>после запуска комнат.</p></div>
+        <div className={styles.howIntro}><div className={styles.overline}>ВСЁ ПРОСТО</div><h2 id="how-title">Один вечер.<br/>Три простых шага.</h2><p>От выбора игры<br/>до первого раунда.</p></div>
         <div className={styles.steps}>
           <div className={styles.step}><span className={styles.stepIcon}><Monitor size={22}/></span><span className={styles.stepNumber}>01</span><h3>Выберите игру</h3><p>Откройте FunTime на большом экране и создайте комнату.</p></div>
           <div className={styles.step}><span className={styles.stepIcon}><Smartphone size={22}/></span><span className={styles.stepNumber}>02</span><h3>Соберите своих</h3><p>Поделитесь кодом. Друзья смогут присоединиться со своих устройств.</p></div>
@@ -61,15 +62,15 @@ export function HomePage() {
         </div>
       </section>
 
-      <section className={styles.faq} aria-label="Вопросы о FunTime"><span><CircleHelp size={18}/> На всякий случай</span><details><summary>Нужно что-нибудь устанавливать?<Plus size={17}/></summary><p>FunTime работает в браузере. Для будущих игр понадобятся интернет и устройства, с которых удобно присоединиться к комнате.</p></details><details><summary>Когда можно будет сыграть?<Plus size={17}/></summary><p>Мы готовим «Мировое господство» и комнаты для вашей компании. Пока можно познакомиться с каталогом; дату запуска объявим позже.</p></details></section>
+      <section className={styles.faq} aria-label="Вопросы о FunTime"><span><CircleHelp size={18}/> На всякий случай</span><details><summary>Нужно что-нибудь устанавливать?<Plus size={17}/></summary><p>FunTime работает в браузере. Для игры понадобятся интернет и устройства, с которых удобно присоединиться к комнате.</p></details><details><summary>Когда можно будет сыграть?<Plus size={17}/></summary><p>«Мировое господство» уже доступно. Создайте комнату, пригласите друзей по коду и распределите страны. Для начала нужны две команды хотя бы по одному игроку.</p></details></section>
     </main>
     <footer className={styles.footer}><span className={styles.footerBrand}><Asterisk size={20}/> funtime <span>Хорошее время — общее.</span></span><span>Сделано для ваших вечеров <span className={styles.footerStar}>✳</span></span></footer>
 
-    <Dialog open={joinOpen} onClose={() => setJoinOpen(false)} title="Скоро соберёмся здесь">
-      <div className={styles.dialogIcon}><Users size={28}/></div><p className={styles.dialogText}>Комнаты ещё готовятся к запуску. Позже здесь можно будет ввести код от друга и присоединиться к игре со своего устройства.</p><div className={styles.dialogNotice}><Check size={17}/> Пока знакомимся с играми и выбираем настроение.</div><Button onClick={() => setJoinOpen(false)}>К каталогу <ArrowRight size={17}/></Button>
+    <Dialog open={joinOpen} onClose={() => setJoinOpen(false)} title="Присоединиться к друзьям">
+      <div className={styles.dialogIcon}><Users size={28}/></div><p className={styles.dialogText}>Введите код от ведущего и займите место в своей команде.</p><EnterRoom />
     </Dialog>
     <Dialog open={selected !== null} onClose={() => setSelected(null)} title={selected?.title || 'Об игре'}>
-      {selected && <><span className={styles.modalBadge}>{selected.status === 'coming_soon' ? 'Скоро в FunTime' : 'Готовим игровой экран'}</span><p className={styles.dialogText}>{selected.description}</p><p className={styles.dialogText}>Подробные правила, состав участников и длительность появятся перед запуском игры.</p><div className={styles.dialogNotice}><Sparkles size={18}/> Сейчас игра в разработке. Следующий шаг — комнаты для вашей компании.</div><Button disabled>Создать комнату · скоро</Button></>}
+      {selected && <><span className={styles.modalBadge}>{selected.status === 'available' ? 'Готова к игре' : 'Скоро в FunTime'}</span><p className={styles.dialogText}>{selected.description}</p>{selected.status === 'available' ? <><p className={styles.dialogText}>2–10 стран, по 1–5 участников. Шесть раундов с двумя фазами по 12 минут. Ведущий управляет темпом, игроки принимают решения со своих устройств.</p><EnterRoom gameId={selected.id} /></> : <p className={styles.dialogText}>Эта игра пока готовится к запуску.</p>}</>}
     </Dialog>
   </>;
 }

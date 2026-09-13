@@ -21,6 +21,105 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/rooms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create a room and set the host session cookie */
+        post: operations["createRoom"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rooms/{code}/join": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: components["parameters"]["Code"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Join lobby or resume a valid existing session */
+        post: operations["joinRoom"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rooms/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: components["parameters"]["Code"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Get the snapshot permitted by the room session cookie
+         * @description Requires the ft_CODE cookie. Poll every two seconds. Cache-Control: no-store.
+         */
+        get: operations["getRoom"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rooms/{code}/screen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: components["parameters"]["Code"];
+            };
+            cookie?: never;
+        };
+        /** Public projector snapshot; ignores cookies even for the host */
+        get: operations["getRoomScreen"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rooms/{code}/commands": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: components["parameters"]["Code"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Apply an authorized room or game command
+         * @description Requires same origin and ft_CODE cookie. Body limit 64 KiB. Room: select {countryId,role}, start {phaseSeconds}. Host: advance/pause/resume {expectedPhase: "round:phase"}. Game: plan (WorldPlan), meeting.request {countryId,double}, meeting.respond {id,accept}, meeting.message {id,text}. A stale plan.version or phase returns 409. Game commands deduplicate participant + requestId (last 4096 per match).
+         */
+        post: operations["roomCommand"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -41,9 +140,145 @@ export interface components {
                 message: string;
             };
         };
+        RoomCode: {
+            code: string;
+        };
+        Participant: {
+            id: string;
+            name: string;
+            countryId: string;
+            role: string;
+            host: boolean;
+        };
+        RoomSnapshot: {
+            code: string;
+            gameId: string;
+            /** @enum {string} */
+            status: "lobby" | "starting" | "playing";
+            revision: number;
+            phaseSeconds: number;
+            serverTime: number;
+            me?: string;
+            participants: components["schemas"]["Participant"][];
+            definition: {
+                id: string;
+                roles: string[];
+                countries: {
+                    id: string;
+                    name: string;
+                    cities: string[];
+                }[];
+            };
+            /** @description Game-specific v1 projection; WorldMatch for world-domination. Private data is filtered on the server. */
+            match?: {
+                [key: string]: unknown;
+            };
+        };
+        WorldPlan: {
+            version: number;
+            upgrades: string[];
+            shields: string[];
+            nuclear: boolean;
+            bombs: number;
+            ecology: boolean;
+            sanctions: string[];
+            donations: {
+                countryId: string;
+                amountCents: number;
+            }[];
+            launches: string[];
+        };
+        WorldCity: {
+            id: string;
+            name: string;
+            development: number;
+            destroyed: boolean;
+            shield?: boolean;
+        };
+        /** @description Public fields are required. Optional economy, arsenal, shield and plan fields are sent only to the country members and host. */
+        WorldCountry: {
+            id: string;
+            name: string;
+            cities: components["schemas"]["WorldCity"][];
+            score: number;
+            eliminated: boolean;
+            retaliationRound: number;
+            balanceCents?: number;
+            incomeCents?: number;
+            bombs?: number;
+            nuclearRound?: number;
+            plan?: components["schemas"]["WorldPlan"];
+            planCostCents?: number;
+            sanctionedBy?: string[];
+            doubleRound?: number;
+        };
+        /** @description Attack sources become public after round six. Donation sources remain anonymous to the recipient, including in the final report. */
+        WorldEvent: {
+            round: number;
+            kind: string;
+            text: string;
+            countryId?: string;
+            targetId?: string;
+            cityId?: string;
+            amount?: number;
+        };
+        WorldMeeting: {
+            id: string;
+            round: number;
+            from: string;
+            to: string;
+            /** @enum {string} */
+            status: "pending" | "accepted" | "rejected";
+            double: boolean;
+            messages: {
+                countryId: string;
+                name: string;
+                text: string;
+                at: number;
+            }[];
+        };
+        WorldMatch: {
+            revision: number;
+            round: number;
+            /** @enum {string} */
+            phase: "council" | "headquarters" | "finished";
+            phaseSeconds: number;
+            deadline: number;
+            paused: boolean;
+            remaining: number;
+            serverTime: number;
+            ecology: number;
+            countries: components["schemas"]["WorldCountry"][];
+            events: components["schemas"]["WorldEvent"][];
+            meetings: components["schemas"]["WorldMeeting"][];
+            history: {
+                round: number;
+                ecology: number;
+                scores: {
+                    [key: string]: number;
+                };
+            }[];
+            formulas?: {
+                ecologyImprovement: number;
+                bombProductionEcology: number;
+                launchGlobalDamage: number;
+            };
+        };
     };
-    responses: never;
-    parameters: never;
+    responses: {
+        /** @description 400 invalid request; 401 session required; 403 forbidden; 404 not found; 409 conflict; 429 limit; 503 unavailable */
+        Error: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ApiError"];
+            };
+        };
+    };
+    parameters: {
+        Code: string;
+    };
     requestBodies: never;
     headers: never;
     pathItems: never;
@@ -79,6 +314,142 @@ export interface operations {
                     "application/json": components["schemas"]["ApiError"];
                 };
             };
+        };
+    };
+    createRoom: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    gameId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Created. HttpOnly SameSite=Strict cookie ft_CODE, scoped to /api/v1/rooms/CODE; Secure in production. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoomCode"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    joinRoom: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: components["parameters"]["Code"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Session cookie set */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoomCode"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    getRoom: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: components["parameters"]["Code"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Participant snapshot */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoomSnapshot"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    getRoomScreen: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: components["parameters"]["Code"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Public snapshot without private plans or arsenal */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoomSnapshot"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    roomCommand: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: components["parameters"]["Code"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    kind: string;
+                    payload: {
+                        [key: string]: unknown;
+                    };
+                    requestId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Persisted snapshot */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoomSnapshot"];
+                };
+            };
+            default: components["responses"]["Error"];
         };
     };
 }

@@ -19,8 +19,8 @@ func TestCatalogHasUniqueIDsAndIsNotMutableAcrossCalls(t *testing.T) {
 		}
 		seen[game.Id] = true
 	}
-	if len(result.Games) != 1 || result.Games[0].Status != "coming_soon" {
-		t.Fatal("first game must not claim to be playable")
+	if len(result.Games) != 1 || result.Games[0].Status != "available" {
+		t.Fatal("world domination must be available")
 	}
 	result.Games[0].Title = "changed"
 	fresh, _ := service.ListGames(context.Background(), &catalogv1.ListGamesRequest{})

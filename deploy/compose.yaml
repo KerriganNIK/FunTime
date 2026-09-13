@@ -39,6 +39,8 @@ services:
     environment:
       HTTP_ADDR: :8080
       CATALOG_ADDR: catalog:9001
+      ROOM_ADDR: room:9003
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
     networks: [app]
     read_only: true
     security_opt: [no-new-privileges:true]
@@ -51,6 +53,8 @@ services:
       retries: 3
     depends_on:
       catalog:
+        condition: service_healthy
+      room:
         condition: service_healthy
     logging: *logging
 
@@ -72,6 +76,85 @@ services:
       retries: 3
     logging: *logging
 
+  room:
+    image: ${ROOM_IMAGE:-funtime/room:dev}
+    restart: unless-stopped
+    environment:
+      GRPC_ADDR: :9003
+      HEALTH_ADDR: :9004
+      WORLD_DOMINATION_ADDR: world-domination:9005
+      DATABASE_URL: postgres://funtime:${ROOM_DB_PASSWORD:-local-room-password}@room-db:5432/rooms?sslmode=disable
+    networks: [app]
+    read_only: true
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    stop_grace_period: 10s
+    depends_on:
+      room-db:
+        condition: service_healthy
+      world-domination:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, http://127.0.0.1:9004/healthz]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+    logging: *logging
+
+  world-domination:
+    image: ${WORLD_DOMINATION_IMAGE:-funtime/world-domination:dev}
+    restart: unless-stopped
+    environment:
+      GRPC_ADDR: :9005
+      HEALTH_ADDR: :9006
+      DATABASE_URL: postgres://funtime:${WORLD_DB_PASSWORD:-local-world-password}@world-db:5432/world?sslmode=disable
+    networks: [app]
+    read_only: true
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    stop_grace_period: 10s
+    depends_on:
+      world-db:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, http://127.0.0.1:9006/healthz]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+    logging: *logging
+
+  room-db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: funtime
+      POSTGRES_DB: rooms
+      POSTGRES_PASSWORD: ${ROOM_DB_PASSWORD:-local-room-password}
+    volumes: [room_data:/var/lib/postgresql/data]
+    networks: [app]
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U funtime -d rooms]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    logging: *logging
+
+  world-db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: funtime
+      POSTGRES_DB: world
+      POSTGRES_PASSWORD: ${WORLD_DB_PASSWORD:-local-world-password}
+    volumes: [world_data:/var/lib/postgresql/data]
+    networks: [app]
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U funtime -d world]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    logging: *logging
+
 networks:
   edge:
   app:
@@ -80,3 +163,5 @@ networks:
 volumes:
   caddy_data:
   caddy_config:
+  room_data:
+  world_data:

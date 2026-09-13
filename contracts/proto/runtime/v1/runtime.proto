@@ -1,0 +1,17 @@
+syntax = "proto3";
+package funtime.runtime.v1;
+option go_package = "funtime.local/contracts/runtime/v1;runtimev1";
+
+service GameRuntime {
+  rpc Definition(DefinitionRequest) returns (JsonReply);
+  rpc Create(CreateRequest) returns (JsonReply);
+  rpc Snapshot(SnapshotRequest) returns (JsonReply);
+  rpc Command(CommandRequest) returns (JsonReply);
+}
+message DefinitionRequest {}
+message Actor { string participant_id = 1; string name = 2; string country_id = 3; bool host = 4; }
+message CreateRequest { string match_id = 1; repeated string country_ids = 2; int32 phase_seconds = 3; Actor actor = 4; }
+message SnapshotRequest { string match_id = 1; Actor actor = 2; }
+message CommandRequest { string match_id = 1; Actor actor = 2; string kind = 3; bytes payload_json = 4; string request_id = 5; }
+// JSON views and action payloads are versioned game contracts, filtered by the game runtime.
+message JsonReply { bytes json = 1; }

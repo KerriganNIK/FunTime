@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: FunTime API
-  version: 0.1.0
+  version: 0.2.0
 paths:
   /api/v1/games:
     get:
@@ -14,7 +14,8 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [games]
+                required:
+                  - games
                 properties:
                   games:
                     type: array
@@ -26,11 +27,146 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /api/v1/rooms:
+    post:
+      operationId: createRoom
+      summary: Create a room and set the host session cookie
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - gameId
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 32
+                gameId:
+                  type: string
+      responses:
+        '201':
+          description: >-
+            Created. HttpOnly SameSite=Strict cookie ft_CODE, scoped to /api/v1/rooms/CODE; Secure in
+            production.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoomCode'
+        default:
+          $ref: '#/components/responses/Error'
+  /api/v1/rooms/{code}/join:
+    parameters:
+      - $ref: '#/components/parameters/Code'
+    post:
+      operationId: joinRoom
+      summary: Join lobby or resume a valid existing session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+      responses:
+        '200':
+          description: Session cookie set
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoomCode'
+        default:
+          $ref: '#/components/responses/Error'
+  /api/v1/rooms/{code}:
+    parameters:
+      - $ref: '#/components/parameters/Code'
+    get:
+      operationId: getRoom
+      summary: Get the snapshot permitted by the room session cookie
+      description: 'Requires the ft_CODE cookie. Poll every two seconds. Cache-Control: no-store.'
+      responses:
+        '200':
+          description: Participant snapshot
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoomSnapshot'
+        default:
+          $ref: '#/components/responses/Error'
+  /api/v1/rooms/{code}/screen:
+    parameters:
+      - $ref: '#/components/parameters/Code'
+    get:
+      operationId: getRoomScreen
+      summary: Public projector snapshot; ignores cookies even for the host
+      responses:
+        '200':
+          description: Public snapshot without private plans or arsenal
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoomSnapshot'
+        default:
+          $ref: '#/components/responses/Error'
+  /api/v1/rooms/{code}/commands:
+    parameters:
+      - $ref: '#/components/parameters/Code'
+    post:
+      operationId: roomCommand
+      summary: Apply an authorized room or game command
+      description: >-
+        Requires same origin and ft_CODE cookie. Body limit 64 KiB. Room: select {countryId,role}, start
+        {phaseSeconds}. Host: advance/pause/resume {expectedPhase: "round:phase"}. Game: plan (WorldPlan),
+        meeting.request {countryId,double}, meeting.respond {id,accept}, meeting.message {id,text}. A stale
+        plan.version or phase returns 409. Game commands deduplicate participant + requestId (last 4096 per
+        match).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - kind
+                - payload
+                - requestId
+              properties:
+                kind:
+                  type: string
+                payload:
+                  type: object
+                  additionalProperties: true
+                requestId:
+                  type: string
+                  minLength: 8
+                  maxLength: 100
+      responses:
+        '200':
+          description: Persisted snapshot
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoomSnapshot'
+        default:
+          $ref: '#/components/responses/Error'
 components:
   schemas:
     Game:
       type: object
-      required: [id, title, description, category, status, accent]
+      required:
+        - id
+        - title
+        - description
+        - category
+        - status
+        - accent
       properties:
         id:
           type: string
@@ -42,19 +178,403 @@ components:
           type: string
         status:
           type: string
-          enum: [coming_soon, available, maintenance]
+          enum:
+            - coming_soon
+            - available
+            - maintenance
         accent:
           type: string
-          enum: [lime, lavender, peach]
+          enum:
+            - lime
+            - lavender
+            - peach
     ApiError:
       type: object
-      required: [error]
+      required:
+        - error
       properties:
         error:
           type: object
-          required: [code, message]
+          required:
+            - code
+            - message
           properties:
             code:
               type: string
             message:
               type: string
+    RoomCode:
+      type: object
+      required:
+        - code
+      properties:
+        code:
+          type: string
+    Participant:
+      type: object
+      required:
+        - id
+        - name
+        - countryId
+        - role
+        - host
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        countryId:
+          type: string
+        role:
+          type: string
+        host:
+          type: boolean
+    RoomSnapshot:
+      type: object
+      required:
+        - code
+        - gameId
+        - status
+        - revision
+        - phaseSeconds
+        - serverTime
+        - participants
+        - definition
+      properties:
+        code:
+          type: string
+        gameId:
+          type: string
+        status:
+          type: string
+          enum:
+            - lobby
+            - starting
+            - playing
+        revision:
+          type: integer
+        phaseSeconds:
+          type: integer
+        serverTime:
+          type: integer
+        me:
+          type: string
+        participants:
+          type: array
+          items:
+            $ref: '#/components/schemas/Participant'
+        definition:
+          type: object
+          required:
+            - id
+            - roles
+            - countries
+          properties:
+            id:
+              type: string
+            roles:
+              type: array
+              items:
+                type: string
+            countries:
+              type: array
+              items:
+                type: object
+                required:
+                  - id
+                  - name
+                  - cities
+                properties:
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  cities:
+                    type: array
+                    items:
+                      type: string
+        match:
+          type: object
+          additionalProperties: true
+          description: >-
+            Game-specific v1 projection; WorldMatch for world-domination. Private data is filtered on the
+            server.
+    WorldPlan:
+      type: object
+      required:
+        - version
+        - upgrades
+        - shields
+        - nuclear
+        - bombs
+        - ecology
+        - sanctions
+        - donations
+        - launches
+      properties:
+        version:
+          type: integer
+        upgrades:
+          type: array
+          items:
+            type: string
+        shields:
+          type: array
+          items:
+            type: string
+        nuclear:
+          type: boolean
+        bombs:
+          type: integer
+        ecology:
+          type: boolean
+        sanctions:
+          type: array
+          items:
+            type: string
+        donations:
+          type: array
+          items:
+            type: object
+            required:
+              - countryId
+              - amountCents
+            properties:
+              countryId:
+                type: string
+              amountCents:
+                type: integer
+        launches:
+          type: array
+          items:
+            type: string
+    WorldCity:
+      type: object
+      required:
+        - id
+        - name
+        - development
+        - destroyed
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        development:
+          type: integer
+        destroyed:
+          type: boolean
+        shield:
+          type: boolean
+    WorldCountry:
+      type: object
+      required:
+        - id
+        - name
+        - cities
+        - score
+        - eliminated
+        - retaliationRound
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        cities:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorldCity'
+        score:
+          type: number
+        eliminated:
+          type: boolean
+        retaliationRound:
+          type: integer
+        balanceCents:
+          type: integer
+        incomeCents:
+          type: integer
+        bombs:
+          type: integer
+        nuclearRound:
+          type: integer
+        plan:
+          $ref: '#/components/schemas/WorldPlan'
+        planCostCents:
+          type: integer
+        sanctionedBy:
+          type: array
+          items:
+            type: string
+        doubleRound:
+          type: integer
+      description: >-
+        Public fields are required. Optional economy, arsenal, shield and plan fields are sent only to the
+        country members and host.
+    WorldEvent:
+      type: object
+      required:
+        - round
+        - kind
+        - text
+      properties:
+        round:
+          type: integer
+        kind:
+          type: string
+        text:
+          type: string
+        countryId:
+          type: string
+        targetId:
+          type: string
+        cityId:
+          type: string
+        amount:
+          type: integer
+      description: >-
+        Attack sources become public after round six. Donation sources remain anonymous to the recipient,
+        including in the final report.
+    WorldMeeting:
+      type: object
+      required:
+        - id
+        - round
+        - from
+        - to
+        - status
+        - double
+        - messages
+      properties:
+        id:
+          type: string
+        round:
+          type: integer
+        from:
+          type: string
+        to:
+          type: string
+        status:
+          type: string
+          enum:
+            - pending
+            - accepted
+            - rejected
+        double:
+          type: boolean
+        messages:
+          type: array
+          items:
+            type: object
+            required:
+              - countryId
+              - name
+              - text
+              - at
+            properties:
+              countryId:
+                type: string
+              name:
+                type: string
+              text:
+                type: string
+              at:
+                type: integer
+    WorldMatch:
+      type: object
+      required:
+        - revision
+        - round
+        - phase
+        - phaseSeconds
+        - deadline
+        - paused
+        - remaining
+        - serverTime
+        - ecology
+        - countries
+        - events
+        - meetings
+        - history
+      properties:
+        revision:
+          type: integer
+        round:
+          type: integer
+        phase:
+          type: string
+          enum:
+            - council
+            - headquarters
+            - finished
+        phaseSeconds:
+          type: integer
+        deadline:
+          type: integer
+        paused:
+          type: boolean
+        remaining:
+          type: integer
+        serverTime:
+          type: integer
+        ecology:
+          type: integer
+        countries:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorldCountry'
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorldEvent'
+        meetings:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorldMeeting'
+        history:
+          type: array
+          items:
+            type: object
+            required:
+              - round
+              - ecology
+              - scores
+            properties:
+              round:
+                type: integer
+              ecology:
+                type: integer
+              scores:
+                type: object
+                additionalProperties:
+                  type: number
+        formulas:
+          type: object
+          required:
+            - ecologyImprovement
+            - bombProductionEcology
+            - launchGlobalDamage
+          properties:
+            ecologyImprovement:
+              type: integer
+            bombProductionEcology:
+              type: integer
+            launchGlobalDamage:
+              type: integer
+  parameters:
+    Code:
+      name: code
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: ^[A-Z2-9]{6}$
+  responses:
+    Error:
+      description: >-
+        400 invalid request; 401 session required; 403 forbidden; 404 not found; 409 conflict; 429 limit; 503
+        unavailable
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'

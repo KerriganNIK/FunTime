@@ -15,9 +15,9 @@ func (s *Service) ListGames(context.Context, *catalogv1.ListGamesRequest) (*cata
 	return &catalogv1.ListGamesResponse{Games: []*catalogv1.Game{{
 		Id:          "world-domination",
 		Title:       "Мировое господство",
-		Description: "Одна планета. Ваша компания. Большие амбиции. Первая игра FunTime — скоро здесь.",
+		Description: "Возглавьте страну, развивайте города и заключайте союзы. Шесть раундов дипломатии, тайных решений и борьбы за мировое господство.",
 		Category:    "Игра для компании",
-		Status:      "coming_soon",
+		Status:      "available",
 		Accent:      "lime",
 	}}}, nil
 }

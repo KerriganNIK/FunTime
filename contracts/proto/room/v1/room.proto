@@ -1,0 +1,22 @@
+syntax = "proto3";
+package funtime.room.v1;
+option go_package = "funtime.local/contracts/room/v1;roomv1";
+
+service RoomService {
+  rpc Create(CreateRequest) returns (SessionReply);
+  rpc Join(JoinRequest) returns (SessionReply);
+  rpc Snapshot(SnapshotRequest) returns (SnapshotReply);
+  rpc Command(CommandRequest) returns (SnapshotReply);
+}
+message CreateRequest { string name = 1; string game_id = 2; }
+message JoinRequest { string code = 1; string name = 2; string session_token = 3; }
+message SessionReply { string code = 1; string session_token = 2; }
+message SnapshotRequest { string code = 1; string session_token = 2; bool public_screen = 3; }
+message SnapshotReply { bytes json = 1; }
+message CommandRequest {
+  string code = 1;
+  string session_token = 2;
+  string kind = 3;
+  bytes payload_json = 4;
+  string request_id = 5;
+}

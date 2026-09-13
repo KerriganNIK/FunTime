@@ -4,4 +4,7 @@ use (
     ./contracts/gen/go
     ./services/catalog
     ./services/gateway
+    ./packages/go
+    ./services/room
+    ./services/world-domination
 )

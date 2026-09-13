@@ -7,5 +7,22 @@ services:
     image: ${FRONTEND_IMAGE:?Set the frontend image digest}
   gateway:
     image: ${GATEWAY_IMAGE:?Set the gateway image digest}
+    environment:
+      COOKIE_SECURE: 'true'
+      PUBLIC_ORIGIN: https://${SITE_ADDRESS:?Set the production domain}
   catalog:
     image: ${CATALOG_IMAGE:?Set the catalog image digest}
+  room:
+    image: ${ROOM_IMAGE:?Set the room image digest}
+    environment:
+      DATABASE_URL: postgres://funtime:${ROOM_DB_PASSWORD:?Set room database password}@room-db:5432/rooms?sslmode=disable
+  world-domination:
+    image: ${WORLD_DOMINATION_IMAGE:?Set the game image digest}
+    environment:
+      DATABASE_URL: postgres://funtime:${WORLD_DB_PASSWORD:?Set game database password}@world-db:5432/world?sslmode=disable
+  room-db:
+    environment:
+      POSTGRES_PASSWORD: ${ROOM_DB_PASSWORD:?Set room database password}
+  world-db:
+    environment:
+      POSTGRES_PASSWORD: ${WORLD_DB_PASSWORD:?Set game database password}

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	catalogv1 "funtime.local/contracts/catalog/v1"
+	roomv1 "funtime.local/contracts/room/v1"
 	"google.golang.org/grpc"
 )
 
@@ -33,8 +34,11 @@ func writeJSON(w http.ResponseWriter, status int, body any) {
 	_ = json.NewEncoder(w).Encode(body)
 }
 
-func New(client CatalogClient) http.Handler {
+func New(client CatalogClient, rooms ...roomv1.RoomServiceClient) http.Handler {
 	mux := http.NewServeMux()
+	if len(rooms) > 0 {
+		registerRooms(mux, rooms[0])
+	}
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })
 	mux.HandleFunc("GET /readyz", func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), time.Second)
