@@ -14,3 +14,4 @@
 @media (max-width: 900px) { .header { padding-inline: 28px; } .nav { gap: 18px; } }
 @media (max-width: 700px) { .header { padding: 20px; gap: 16px; flex-wrap: wrap; } .nav { order: 3; width: 100%; justify-content: center; padding-top: 10px; } .logo { font-size: 25px; } .actions { gap: 12px; } .join { font-size: 12px; } }
 @media (max-width: 370px) { .join svg { display: none; } .mark { width: 34px; height: 34px; margin-right: 7px; } .actions { gap: 8px; } }
+@media (max-width: 700px) { .header { padding-top: max(18px, env(safe-area-inset-top)); padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); } .nav a, .join { min-height: 44px; } }

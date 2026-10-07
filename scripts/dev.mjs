@@ -25,7 +25,7 @@ start(join(cache, 'bin', `catalog${ext}`), [], { GRPC_ADDR: '127.0.0.1:9001', HE
 start(join(cache, 'bin', `world-domination${ext}`), [], { GRPC_ADDR: '127.0.0.1:9005', HEALTH_ADDR: '127.0.0.1:9006', DATA_DIR: join(cache, 'data', 'world-domination') });
 start(join(cache, 'bin', `room${ext}`), [], { GRPC_ADDR: '127.0.0.1:9003', HEALTH_ADDR: '127.0.0.1:9004', DATA_DIR: join(cache, 'data', 'room') });
 start(join(cache, 'bin', `gateway${ext}`), [], { HTTP_ADDR: '127.0.0.1:8080', CATALOG_ADDR: '127.0.0.1:9001' });
-start(process.execPath, ['node_modules/vite/bin/vite.js', 'frontend', '--host', '127.0.0.1'], { GATEWAY_URL: 'http://127.0.0.1:8080' });
+start(process.execPath, ['node_modules/vite/bin/vite.js', 'frontend', '--host', process.env.FUNTIME_DEV_HOST || '0.0.0.0'], { GATEWAY_URL: 'http://127.0.0.1:8080' });
 process.on('SIGINT', () => stop());
 process.on('SIGTERM', () => stop());
 process.on('disconnect', () => stop());

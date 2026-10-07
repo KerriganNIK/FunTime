@@ -9,6 +9,7 @@ export default defineConfig({
   projects: [
     { name: 'desktop', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 1000 }, ...(process.platform === 'win32' ? { channel: 'msedge' } : {}) } },
     { name: 'mobile', use: { ...devices['iPhone 13'], defaultBrowserType: 'chromium', ...(process.platform === 'win32' ? { channel: 'msedge' } : {}) } },
+    { name: 'android', use: { ...devices['Pixel 5'], ...(process.platform === 'win32' ? { channel: 'msedge' } : {}) } },
   ],
   webServer: process.env.FUNTIME_EXTERNAL_SERVER ? undefined : { command: 'node scripts/dev.mjs', url: 'http://127.0.0.1:5173', reuseExistingServer: !process.env.CI, timeout: 120_000 },
 });

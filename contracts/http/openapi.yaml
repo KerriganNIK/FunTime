@@ -50,8 +50,8 @@ paths:
       responses:
         '201':
           description: >-
-            Created. HttpOnly SameSite=Strict cookie ft_CODE, scoped to /api/v1/rooms/CODE; Secure in
-            production.
+            Created. HttpOnly SameSite=Strict cookie ft_CODE, scoped to /api/v1/rooms/CODE; Secure
+            in production.
           content:
             application/json:
               schema:
@@ -122,11 +122,12 @@ paths:
       operationId: roomCommand
       summary: Apply an authorized room or game command
       description: >-
-        Requires same origin and ft_CODE cookie. Body limit 64 KiB. Room: select {countryId,role}, start
-        {phaseSeconds}. Host: advance/pause/resume {expectedPhase: "round:phase"}. Game: plan (WorldPlan),
-        meeting.request {countryId,double}, meeting.respond {id,accept}, meeting.message {id,text}. A stale
-        plan.version or phase returns 409. Game commands deduplicate participant + requestId (last 4096 per
-        match).
+        Requires same origin and ft_CODE cookie. Body limit 64 KiB. Room: select {countryId,role},
+        start {phaseSeconds}. Host: advance/pause/resume {expectedPhase: "round:phase"},
+        income.adjust {expectedPhase,baseIncomeCents} for v2 matches. Game: plan
+        (WorldPlan), meeting.request {countryId,double}, meeting.respond {id,accept},
+        meeting.message {id,text}. A stale plan.version or phase returns 409. Game commands
+        deduplicate participant + requestId (last 4096 per match).
       requestBody:
         required: true
         content:
@@ -297,8 +298,8 @@ components:
           type: object
           additionalProperties: true
           description: >-
-            Game-specific v1 projection; WorldMatch for world-domination. Private data is filtered on the
-            server.
+            Game-specific projection; WorldMatch for world-domination. Rules version is fixed when a
+            match starts. Private data is filtered on the server.
     WorldPlan:
       type: object
       required:
@@ -348,6 +349,11 @@ components:
           type: array
           items:
             type: string
+        spies:
+          type: array
+          maxItems: 9
+          items:
+            type: string
     WorldCity:
       type: object
       required:
@@ -366,6 +372,17 @@ components:
           type: boolean
         shield:
           type: boolean
+        role:
+          type: string
+          enum:
+            - ''
+            - capital
+            - military
+            - security
+            - intelligence
+            - tourism
+        level:
+          type: integer
     WorldCountry:
       type: object
       required:
@@ -408,9 +425,15 @@ components:
             type: string
         doubleRound:
           type: integer
+        prices:
+          $ref: '#/components/schemas/WorldPrices'
+        intelligence:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorldIntelligence'
       description: >-
-        Public fields are required. Optional economy, arsenal, shield and plan fields are sent only to the
-        country members and host.
+        Public fields are required. Optional economy, arsenal, shield and plan fields are sent only
+        to the country members and host.
     WorldEvent:
       type: object
       required:
@@ -433,8 +456,8 @@ components:
         amount:
           type: integer
       description: >-
-        Attack sources become public after round six. Donation sources remain anonymous to the recipient,
-        including in the final report.
+        Attack sources become public after round six. Donation sources remain anonymous to the
+        recipient, including in the final report.
     WorldMeeting:
       type: object
       required:
@@ -496,6 +519,9 @@ components:
         - events
         - meetings
         - history
+        - rules
+        - pollution
+        - baseIncomeCents
       properties:
         revision:
           type: integer
@@ -548,6 +574,8 @@ components:
                 type: object
                 additionalProperties:
                   type: number
+              pollution:
+                type: integer
         formulas:
           type: object
           required:
@@ -561,6 +589,94 @@ components:
               type: integer
             launchGlobalDamage:
               type: integer
+            nuclearProgramPollution:
+              type: integer
+        rules:
+          $ref: '#/components/schemas/WorldRules'
+        pollution:
+          type: integer
+        baseIncomeCents:
+          type: integer
+    WorldPrices:
+      type: object
+      required:
+        - upgrade
+        - shield
+        - bomb
+        - nuclear
+        - ecology
+      properties:
+        upgrade:
+          type: integer
+        shield:
+          type: integer
+        bomb:
+          type: integer
+        nuclear:
+          type: integer
+        ecology:
+          type: integer
+    WorldIntelligence:
+      type: object
+      required:
+        - round
+        - countryId
+        - countryName
+        - balanceCents
+        - bombs
+        - nuclearRound
+        - cities
+      properties:
+        round:
+          type: integer
+        countryId:
+          type: string
+        countryName:
+          type: string
+        balanceCents:
+          type: integer
+        bombs:
+          type: integer
+        nuclearRound:
+          type: integer
+        cities:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorldCity'
+    WorldRules:
+      type: object
+      required:
+        - version
+        - startingBalanceCents
+        - upgradeCostCents
+        - shieldBaseCostCents
+        - bombBaseCostCents
+        - nuclearCostCents
+        - ecologyCostCents
+        - levelDiscountCents
+        - tourismIncomeCents
+        - cityCount
+      properties:
+        version:
+          type: integer
+        startingBalanceCents:
+          type: integer
+        upgradeCostCents:
+          type: integer
+        shieldBaseCostCents:
+          type: integer
+        bombBaseCostCents:
+          type: integer
+        nuclearCostCents:
+          type: integer
+        ecologyCostCents:
+          type: integer
+        levelDiscountCents:
+          type: integer
+        tourismIncomeCents:
+          type: integer
+        cityCount:
+          type: integer
   parameters:
     Code:
       name: code
@@ -572,8 +688,8 @@ components:
   responses:
     Error:
       description: >-
-        400 invalid request; 401 session required; 403 forbidden; 404 not found; 409 conflict; 429 limit; 503
-        unavailable
+        400 invalid request; 401 session required; 403 forbidden; 404 not found; 409 conflict; 429
+        limit; 503 unavailable
       content:
         application/json:
           schema:

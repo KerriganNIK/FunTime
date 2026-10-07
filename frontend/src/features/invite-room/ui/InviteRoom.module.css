@@ -1,0 +1,9 @@
+.description { color: var(--color-muted); font-size: 15px; line-height: 1.75; }
+.code { padding: 20px; background: var(--color-soft); border: 1px solid var(--color-border); border-radius: 16px; margin: 22px 0; text-align: center; }
+.code span { display: block; font-size: 11px; color: var(--color-muted); letter-spacing: .14em; }
+.code strong { display: block; margin-top: 8px; font: 600 clamp(24px, 6vw, 34px) var(--font-display); letter-spacing: .12em; }
+.link { display: grid; gap: 8px; font-size: 13px; font-weight: 700; }
+.link input { width: 100%; min-width: 0; padding: 14px; font-size: 16px; color: var(--color-text); background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 12px; }
+.actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
+.feedback { font-size: 13px; color: var(--color-muted); margin-top: 14px; min-height: 1.65em; }
+@media (max-width: 680px) { .actions { flex-direction: column; } }

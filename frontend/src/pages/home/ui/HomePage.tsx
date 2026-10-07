@@ -30,6 +30,7 @@ export function HomePage() {
           <p>Собирайте друзей. Выбирайте игру.<br/>Превращайте обычный вечер в вашу историю.</p>
           <div className={styles.heroActions}><a className={styles.primaryLink} href="#games">Выбрать игру <ArrowDown size={18}/></a><a className={styles.secondaryLink} href="#how-it-works">Как это работает <ArrowUpRight size={17}/></a></div>
           <div className={styles.heroNote}><Globe2 size={15}/> Прямо в браузере <span>·</span> Вместе, даже на расстоянии</div>
+          <div className={styles.heroFacts}><span>Без установки</span><span>Одна комната на всех</span><span>Ваш телефон — пульт</span></div>
         </div>
         <HeroArtwork />
       </section>

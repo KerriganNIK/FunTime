@@ -10,8 +10,10 @@ func (m *Match) View(a Actor, now time.Time) map[string]any {
 		private := a.Host || a.CountryID == c.ID
 		for _, city := range c.Cities {
 			v := map[string]any{"id": city.ID, "name": city.Name, "development": city.Development, "destroyed": city.Destroyed}
+			v["role"] = city.Role
 			if private {
 				v["shield"] = city.Shield
+				v["level"] = city.Level
 			}
 			cities = append(cities, v)
 		}
@@ -22,7 +24,13 @@ func (m *Match) View(a Actor, now time.Time) map[string]any {
 			v["bombs"] = c.Bombs
 			v["nuclearRound"] = c.NuclearRound
 			v["plan"] = c.Plan
-			v["planCostCents"] = Cost(c.Plan)
+			v["planCostCents"] = m.PlanCost(&c, c.Plan)
+			v["prices"] = m.Prices(&c)
+			reports := c.Intelligence
+			if reports == nil {
+				reports = []IntelligenceReport{}
+			}
+			v["intelligence"] = reports
 			v["sanctionedBy"] = c.SanctionedBy
 			v["doubleRound"] = c.DoubleRound
 		}
@@ -35,7 +43,7 @@ func (m *Match) View(a Actor, now time.Time) map[string]any {
 			continue
 		}
 		switch e.Kind {
-		case "attack", "upgrade", "production", "sanction":
+		case "attack", "upgrade", "production", "sanction", "ecology", "spy":
 			if m.Phase == "finished" || e.Kind == "sanction" && e.TargetID == a.CountryID {
 				events = append(events, e)
 			}
@@ -54,8 +62,14 @@ func (m *Match) View(a Actor, now time.Time) map[string]any {
 		}
 	}
 	v := map[string]any{"revision": m.Revision, "round": m.Round, "phase": m.Phase, "phaseSeconds": m.PhaseSeconds, "deadline": m.Deadline, "paused": m.Paused, "remaining": m.Remaining, "serverTime": now.UnixMilli(), "ecology": m.Ecology, "countries": countries, "events": events, "history": m.History, "meetings": meetings}
+	v["rules"] = m.Rules()
+	v["pollution"] = m.Pollution
+	v["baseIncomeCents"] = m.BaseIncomeCents
 	if a.Host {
 		v["formulas"] = map[string]int{"ecologyImprovement": 20, "bombProductionEcology": 4, "launchGlobalDamage": 3}
+		if m.RulesVersion >= 2 {
+			v["formulas"] = map[string]int{"ecologyImprovement": 20, "bombProductionEcology": 3, "nuclearProgramPollution": 6, "launchGlobalDamage": 3}
+		}
 	}
 	return v
 }

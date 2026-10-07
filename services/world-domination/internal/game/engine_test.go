@@ -13,7 +13,7 @@ var testNow = time.Date(2026, 9, 13, 12, 0, 0, 0, time.UTC)
 
 func newMatch(t *testing.T) *Match {
 	t.Helper()
-	m, err := New("ABC234", []string{"norway", "germany"}, 720, testNow)
+	m, err := newMatchWithRules("ABC234", []string{"norway", "germany"}, 720, testNow, 1)
 	if err != nil {
 		t.Fatal(err)
 	}

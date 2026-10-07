@@ -1,6 +1,7 @@
 .dialog { padding: 0; border: 1px solid var(--color-border); border-radius: var(--radius-lg); color: var(--color-text); background: var(--color-surface); box-shadow: var(--shadow-dialog); width: min(560px, calc(100% - 32px)); max-height: calc(100dvh - 48px); }
 .dialog::backdrop { background: #14201580; backdrop-filter: blur(5px); }
-.content { padding: 44px 36px 32px; }
+.content { padding: 44px 36px 32px; text-align: start; }
 .content h2 { padding-right: 30px; font: 600 23px/1.4 var(--font-display); margin-bottom: 20px; }
-.close { position: absolute; top: 15px; right: 15px; display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 50%; background: var(--color-soft); color: var(--color-text); }
+.close { position: absolute; top: 12px; right: 12px; display: grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: 50%; background: var(--color-soft); color: var(--color-text); }
 @media (max-width: 480px) { .content { padding: 44px 24px 24px; } .content h2 { font-size: 19px; } }
+@media (max-width: 680px) { .dialog { max-height: calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); border-radius: 22px; overscroll-behavior: contain; } .content { padding-top: 58px; padding-bottom: max(24px, env(safe-area-inset-bottom)); } }

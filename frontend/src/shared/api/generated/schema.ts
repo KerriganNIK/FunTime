@@ -111,7 +111,7 @@ export interface paths {
         put?: never;
         /**
          * Apply an authorized room or game command
-         * @description Requires same origin and ft_CODE cookie. Body limit 64 KiB. Room: select {countryId,role}, start {phaseSeconds}. Host: advance/pause/resume {expectedPhase: "round:phase"}. Game: plan (WorldPlan), meeting.request {countryId,double}, meeting.respond {id,accept}, meeting.message {id,text}. A stale plan.version or phase returns 409. Game commands deduplicate participant + requestId (last 4096 per match).
+         * @description Requires same origin and ft_CODE cookie. Body limit 64 KiB. Room: select {countryId,role}, start {phaseSeconds}. Host: advance/pause/resume {expectedPhase: "round:phase"}, income.adjust {expectedPhase,baseIncomeCents} for v2 matches. Game: plan (WorldPlan), meeting.request {countryId,double}, meeting.respond {id,accept}, meeting.message {id,text}. A stale plan.version or phase returns 409. Game commands deduplicate participant + requestId (last 4096 per match).
          */
         post: operations["roomCommand"];
         delete?: never;
@@ -169,7 +169,7 @@ export interface components {
                     cities: string[];
                 }[];
             };
-            /** @description Game-specific v1 projection; WorldMatch for world-domination. Private data is filtered on the server. */
+            /** @description Game-specific projection; WorldMatch for world-domination. Rules version is fixed when a match starts. Private data is filtered on the server. */
             match?: {
                 [key: string]: unknown;
             };
@@ -187,6 +187,7 @@ export interface components {
                 amountCents: number;
             }[];
             launches: string[];
+            spies?: string[];
         };
         WorldCity: {
             id: string;
@@ -194,6 +195,9 @@ export interface components {
             development: number;
             destroyed: boolean;
             shield?: boolean;
+            /** @enum {string} */
+            role?: "" | "capital" | "military" | "security" | "intelligence" | "tourism";
+            level?: number;
         };
         /** @description Public fields are required. Optional economy, arsenal, shield and plan fields are sent only to the country members and host. */
         WorldCountry: {
@@ -211,6 +215,8 @@ export interface components {
             planCostCents?: number;
             sanctionedBy?: string[];
             doubleRound?: number;
+            prices?: components["schemas"]["WorldPrices"];
+            intelligence?: components["schemas"]["WorldIntelligence"][];
         };
         /** @description Attack sources become public after round six. Donation sources remain anonymous to the recipient, including in the final report. */
         WorldEvent: {
@@ -257,12 +263,45 @@ export interface components {
                 scores: {
                     [key: string]: number;
                 };
+                pollution?: number;
             }[];
             formulas?: {
                 ecologyImprovement: number;
                 bombProductionEcology: number;
                 launchGlobalDamage: number;
+                nuclearProgramPollution?: number;
             };
+            rules: components["schemas"]["WorldRules"];
+            pollution: number;
+            baseIncomeCents: number;
+        };
+        WorldPrices: {
+            upgrade: number;
+            shield: number;
+            bomb: number;
+            nuclear: number;
+            ecology: number;
+        };
+        WorldIntelligence: {
+            round: number;
+            countryId: string;
+            countryName: string;
+            balanceCents: number;
+            bombs: number;
+            nuclearRound: number;
+            cities: components["schemas"]["WorldCity"][];
+        };
+        WorldRules: {
+            version: number;
+            startingBalanceCents: number;
+            upgradeCostCents: number;
+            shieldBaseCostCents: number;
+            bombBaseCostCents: number;
+            nuclearCostCents: number;
+            ecologyCostCents: number;
+            levelDiscountCents: number;
+            tourismIncomeCents: number;
+            cityCount: number;
         };
     };
     responses: {

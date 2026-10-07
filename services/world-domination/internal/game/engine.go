@@ -16,19 +16,6 @@ func invalid(s string) error { return status.Error(codes.InvalidArgument, s) }
 func denied() error {
 	return status.Error(codes.PermissionDenied, "Это действие недоступно")
 }
-func Cost(p Plan) int64 {
-	n := int64(len(p.Upgrades))*15000 + int64(len(p.Shields)+p.Bombs)*30000
-	if p.Nuclear {
-		n += 50000
-	}
-	if p.Ecology {
-		n += 20000
-	}
-	for _, d := range p.Donations {
-		n += d.AmountCents
-	}
-	return n
-}
 func Upgrade(development int) int {
 	if development < 100 {
 		return 20
@@ -49,13 +36,13 @@ func (m *Match) validate(c *Country, p Plan) error {
 	if c.Eliminated {
 		return denied()
 	}
-	if len(p.Upgrades) > 4 || len(p.Shields) > 4 || p.Bombs < 0 || p.Bombs > 1000 || len(p.Launches) > 1000 || len(p.Donations) > 10 || len(p.Sanctions) > 9 {
+	if len(p.Upgrades) > len(c.Cities) || len(p.Shields) > len(c.Cities) || p.Bombs < 0 || p.Bombs > 1000 || len(p.Launches) > 1000 || len(p.Donations) > 10 || len(p.Sanctions) > 9 || len(p.Spies) > 9 {
 		return invalid("Слишком много действий")
 	}
-	if c.RetaliationRound > 0 && (len(p.Upgrades)+len(p.Shields)+p.Bombs+len(p.Donations)+len(p.Sanctions) > 0 || p.Nuclear || p.Ecology) {
+	if c.RetaliationRound > 0 && (len(p.Upgrades)+len(p.Shields)+p.Bombs+len(p.Donations)+len(p.Sanctions)+len(p.Spies) > 0 || p.Nuclear || p.Ecology) {
 		return invalid("Акт возмездия: доступны только оставшиеся бомбы")
 	}
-	for _, list := range [][]string{p.Upgrades, p.Shields, p.Sanctions} {
+	for _, list := range [][]string{p.Upgrades, p.Shields, p.Sanctions, p.Spies} {
 		seen := map[string]bool{}
 		for _, id := range list {
 			if seen[id] {
@@ -98,6 +85,19 @@ func (m *Match) validate(c *Country, p Plan) error {
 		}
 	}
 	seen := map[string]bool{}
+	spyLevel := c.Level("intelligence")
+	if city := c.CityByRole("intelligence"); city != nil && slices.Contains(p.Upgrades, city.ID) {
+		spyLevel++
+	}
+	if len(p.Spies) > 0 && (m.RulesVersion < 2 || len(p.Spies) > spyLevel) {
+		return invalid("Недостаточно уровней города разведки")
+	}
+	for _, id := range p.Spies {
+		other := m.Country(id)
+		if other == nil || other.ID == c.ID || !other.Alive() {
+			return invalid("Неверная цель разведки")
+		}
+	}
 	for _, d := range p.Donations {
 		other := m.Country(d.CountryID)
 		if other == nil || other.ID == c.ID || !other.Alive() || d.AmountCents <= 0 || d.AmountCents > 100000000000 || seen[d.CountryID] {
@@ -117,6 +117,29 @@ func decode(b []byte, v any) error {
 	return nil
 }
 func (m *Match) Command(a Actor, kind string, payload []byte, now time.Time) error {
+	if kind == "income.adjust" {
+		if !a.Host {
+			return denied()
+		}
+		if m.RulesVersion < 2 || m.Phase == "finished" {
+			return invalid("Изменение дохода недоступно")
+		}
+		var p struct {
+			BaseIncomeCents int64  `json:"baseIncomeCents"`
+			ExpectedPhase   string `json:"expectedPhase"`
+		}
+		if err := decode(payload, &p); err != nil {
+			return err
+		}
+		if p.ExpectedPhase != fmt.Sprintf("%d:%s", m.Round, m.Phase) {
+			return status.Error(codes.Aborted, "Фаза уже изменилась")
+		}
+		if p.BaseIncomeCents < 0 || p.BaseIncomeCents > 100000000 {
+			return invalid("Базовый доход: от 0 до 1 000 000 монет")
+		}
+		m.BaseIncomeCents = p.BaseIncomeCents
+		return nil
+	}
 	if kind == "advance" || kind == "pause" || kind == "resume" {
 		if !a.Host {
 			return denied()
@@ -200,16 +223,21 @@ func randomIndex(n int) int {
 	return int(v.Int64())
 }
 func (m *Match) trimBudget(c *Country, p *Plan) {
-	for Cost(*p) > c.BalanceCents {
+	prices := m.Prices(c)
+	for m.PlanCost(c, *p) > c.BalanceCents {
 		actions := []func(){}
 		for i := range p.Upgrades {
 			actions = append(actions, func() { p.Upgrades = append(p.Upgrades[:i], p.Upgrades[i+1:]...) })
 		}
 		for i := range p.Shields {
-			actions = append(actions, func() { p.Shields = append(p.Shields[:i], p.Shields[i+1:]...) })
+			if prices["shield"] > 0 {
+				actions = append(actions, func() { p.Shields = append(p.Shields[:i], p.Shields[i+1:]...) })
+			}
 		}
 		for range p.Bombs {
-			actions = append(actions, func() { p.Bombs-- })
+			if prices["bomb"] > 0 {
+				actions = append(actions, func() { p.Bombs-- })
+			}
 		}
 		if p.Nuclear {
 			actions = append(actions, func() { p.Nuclear = false })
@@ -235,7 +263,7 @@ func (m *Match) trimBudget(c *Country, p *Plan) {
 func (m *Match) settle() {
 	plans := map[string]Plan{}
 	launches := []Event{}
-	produced, ecology := 0, 0
+	produced, ecology, programs := 0, 0, 0
 	for i := range m.Countries {
 		c := &m.Countries[i]
 		p := c.Plan
@@ -244,10 +272,13 @@ func (m *Match) settle() {
 		}
 		m.trimBudget(c, &p)
 		plans[c.ID] = p
-		c.BalanceCents -= Cost(p)
+		c.BalanceCents -= m.PlanCost(c, p)
 		for _, id := range p.Upgrades {
 			_, city := m.City(id)
 			city.Development += Upgrade(city.Development)
+			if m.RulesVersion >= 2 {
+				city.Level++
+			}
 			m.Events = append(m.Events, Event{Round: m.Round, Kind: "upgrade", CountryID: c.ID, CityID: id, Text: "Развитие города"})
 		}
 		for _, id := range p.Shields {
@@ -256,6 +287,7 @@ func (m *Match) settle() {
 		}
 		if p.Nuclear {
 			c.NuclearRound = m.Round + 1
+			programs++
 		}
 		c.Bombs += p.Bombs
 		produced += p.Bombs
@@ -264,6 +296,17 @@ func (m *Match) settle() {
 		}
 		if p.Ecology {
 			ecology++
+			m.Events = append(m.Events, Event{Round: m.Round, Kind: "ecology", CountryID: c.ID, Text: "Улучшение экологии"})
+		}
+		if m.RulesVersion >= 2 {
+			if len(p.Spies) > c.Level("intelligence") {
+				p.Spies = p.Spies[:c.Level("intelligence")]
+				m.Events = append(m.Events, Event{Round: m.Round, Kind: "cancelled", CountryID: c.ID, Text: "Разведка отменена: улучшение города не вошло в бюджет"})
+			}
+			if city := c.CityByRole("intelligence"); city != nil {
+				city.Level -= len(p.Spies)
+			}
+			plans[c.ID] = p
 		}
 		for _, id := range p.Launches {
 			owner, _ := m.City(id)
@@ -298,7 +341,12 @@ func (m *Match) settle() {
 		}
 		m.Events = append(m.Events, hit)
 	}
-	m.Ecology = max(0, m.Ecology+ecology*20-produced*4)
+	if m.RulesVersion >= 2 {
+		m.Pollution = max(0, m.Pollution+programs*6+produced*3-ecology*20)
+		m.Ecology = max(0, 100-m.Pollution)
+	} else {
+		m.Ecology = max(0, m.Ecology+ecology*20-produced*4)
+	}
 	for i := range m.Countries {
 		c := &m.Countries[i]
 		for j := range c.Cities {
@@ -307,6 +355,7 @@ func (m *Match) settle() {
 			if city.Development == 0 {
 				city.Destroyed = true
 				city.Shield = false
+				city.Level = 0
 			}
 		}
 		if c.RetaliationRound > 0 && c.RetaliationRound <= m.Round {
@@ -316,6 +365,24 @@ func (m *Match) settle() {
 			c.RetaliationRound = m.Round + 1
 		}
 		c.Plan = EmptyPlan(c.Plan.Version + 1)
+	}
+	if m.RulesVersion >= 2 {
+		for i := range m.Countries {
+			c := &m.Countries[i]
+			c.IncomeCents = 0
+			if m.Round < 6 {
+				c.IncomeCents = m.NextIncome(c)
+				c.BalanceCents += c.IncomeCents
+			}
+		}
+		for i := range m.Countries {
+			c := &m.Countries[i]
+			for _, id := range plans[c.ID].Spies {
+				other := m.Country(id)
+				c.Intelligence = append(c.Intelligence, IntelligenceReport{Round: m.Round, CountryID: id, CountryName: other.Name, BalanceCents: other.BalanceCents, Bombs: other.Bombs, NuclearRound: other.NuclearRound, Cities: slices.Clone(other.Cities)})
+				m.Events = append(m.Events, Event{Round: m.Round, Kind: "spy", CountryID: c.ID, TargetID: id, Text: "Получен разведывательный отчёт"})
+			}
+		}
 	}
 	m.recordScore(m.Round)
 }
@@ -327,6 +394,9 @@ func (m *Match) Advance(now time.Time) {
 		m.Phase = "headquarters"
 		for i := range m.Countries {
 			c := &m.Countries[i]
+			if m.RulesVersion >= 2 {
+				continue
+			}
 			c.IncomeCents = 0
 			if m.Round > 1 && c.Alive() && !c.Eliminated {
 				c.IncomeCents = Income(c, m.Ecology)
@@ -386,7 +456,7 @@ func (m *Match) diplomacy(a Actor, c *Country, kind string, b []byte, now time.T
 			}
 		}
 		n := accepted(c.ID)
-		if n >= 2 || n == 1 && (!p.Double || c.DoubleRound != 0 && c.DoubleRound != m.Round) {
+		if m.RulesVersion >= 2 && n >= 1 && (!p.Double || c.Level("capital") < 1) || m.RulesVersion < 2 && (n >= 2 || n == 1 && (!p.Double || c.DoubleRound != 0 && c.DoubleRound != m.Round)) {
 			return invalid("Лимит дипломатических визитов исчерпан")
 		}
 		m.Meetings = append(m.Meetings, Meeting{ID: fmt.Sprintf("meeting-%d", len(m.Meetings)+1), Round: m.Round, From: c.ID, To: other.ID, Status: "pending", Double: p.Double, Messages: []Message{}})
@@ -404,17 +474,20 @@ func (m *Match) diplomacy(a Actor, c *Country, kind string, b []byte, now time.T
 			if mt.To != c.ID || mt.Status != "pending" {
 				return denied()
 			}
-			mt.Status = "rejected"
 			if p.Accept {
 				sender := m.Country(mt.From)
 				n := accepted(mt.From)
-				if !sender.Alive() || n >= 2 || n == 1 && (!mt.Double || sender.DoubleRound != 0 && sender.DoubleRound != m.Round) {
+				if !sender.Alive() || m.RulesVersion >= 2 && n >= 1 && (!mt.Double || sender.Level("capital") < 1) || m.RulesVersion < 2 && (n >= 2 || n == 1 && (!mt.Double || sender.DoubleRound != 0 && sender.DoubleRound != m.Round)) {
 					return invalid("Лимит дипломатических визитов исчерпан")
 				}
-				if n == 1 {
+				if m.RulesVersion >= 2 && n >= 1 {
+					sender.CityByRole("capital").Level--
+				} else if n == 1 {
 					sender.DoubleRound = m.Round
 				}
 				mt.Status = "accepted"
+			} else {
+				mt.Status = "rejected"
 			}
 			return nil
 		}
